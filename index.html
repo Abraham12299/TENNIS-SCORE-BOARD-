@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tennis Scoreboard • Customizable</title>
+    <style>
+        :root {
+            --team1-color: #004225;
+            --team1-light: #d9e8d9;
+            --team1-dark: #002b18;
+            --team2-color: #5a2d82;
+            --team2-light: #f0eaf5;
+            --team2-dark: #3e1f5c;
+            --bg-dark: #0a1f14;
+            --bg-light: #f5f2eb;
+            --surface: #ffffff;
+            --text-light: #f8faf8;
+            --text-dark: #1e2a20;
+            --text-muted: #6b7a6e;
+            --border: #d8d0c0;
+            --border-dark: #2d4a38;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.2);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-lg: 20px;
+            --transition: 0.3s ease;
+            --font-display: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: 'Courier New', monospace;
+            --gold: #c9a86c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-display);
+            background: var(--bg-light);
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+
+        .app-header {
+            background: var(--surface);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 3px solid var(--team1-color);
+        }
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--team1-dark);
+        }
+        .app-logo span {
+            font-size: 1.8rem;
+        }
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-light);
+            padding: 4px;
+            border-radius: 50px;
+            border: 2px solid var(--border);
+        }
+        .view-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all var(--transition);
+            background: transparent;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+        .view-btn:hover {
+            color: var(--text-dark);
+        }
+        .view-btn.active {
+            background: var(--team1-color);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        .sync-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .sync-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .view-panel {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .view-panel.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Admin Panel */
+        .admin-header-section { margin-bottom: 24px; }
+        .admin-header-section h1 { font-size: 1.5rem; margin-bottom: 16px; color: var(--team1-dark); }
+        .mode-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+        .mode-btn {
+            padding: 10px 24px; border: 2px solid var(--border); border-radius: 50px; cursor: pointer;
+            font-weight: 600; transition: all var(--transition); background: white; color: var(--text-muted);
+        }
+        .mode-btn:hover { border-color: var(--text-muted); color: var(--text-dark); }
+        .mode-btn.active { border-color: var(--team1-color); color: white; background: var(--team1-color); }
+
+        .title-input-section {
+            display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px;
+        }
+        .title-input-section label {
+            font-weight: 600; color: var(--text-muted); font-size: 0.9rem; min-width: 80px;
+        }
+        .title-input-section input {
+            padding: 8px 14px; border: 2px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 1rem; flex: 1; min-width: 200px; background: #faf8f4;
+        }
+        .title-input-section input:focus { outline: none; border-color: var(--team1-color); }
+
+        .server-toggle-section {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .server-toggle-section label { font-weight: 600; color: var(--text-muted); }
+        .server-btn {
+            padding: 8px 18px; border: 2px solid var(--border); border-radius: 50px; cursor: pointer;
+            font-weight: 600; background: white; color: var(--text-muted); transition: all var(--transition);
+        }
+        .server-btn:hover { border-color: var(--text-muted); color: var(--text-dark); }
+        .server-btn.active { border-color: var(--team1-color); background: var(--team1-color); color: white; }
+        .server-btn.active.team2 { border-color: var(--team2-color); background: var(--team2-color); }
+
+        .admin-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+        }
+        @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; } }
+        .admin-card {
+            background: var(--surface); border-radius: var(--radius); padding: 24px;
+            box-shadow: var(--shadow); border: 2px solid transparent;
+        }
+        .admin-card.team1 { border-top: 4px solid var(--team1-color); border-left: 2px solid var(--team1-light); }
+        .admin-card.team2 { border-top: 4px solid var(--team2-color); border-left: 2px solid var(--team2-light); }
+        .admin-card h2 { font-size: 1.2rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .admin-card.team1 h2 { color: var(--team1-dark); }
+        .admin-card.team2 h2 { color: var(--team2-dark); }
+        .name-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .name-field label {
+            font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: block;
+            margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .name-field input {
+            width: 100%; padding: 10px 14px; border: 2px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 1rem; transition: border-color var(--transition); background: #faf8f4;
+        }
+        .name-field input:focus { outline: none; border-color: var(--team1-color); }
+        .admin-card.team2 .name-field input:focus { border-color: var(--team2-color); }
+        .score-controls { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+        .score-display-mini {
+            font-size: 2.5rem; font-weight: 800; min-width: 70px; text-align: center;
+            font-family: var(--font-mono); color: var(--text-dark); background: var(--bg-light);
+            border-radius: 8px; padding: 4px 12px; border: 1px solid var(--border);
+        }
+        .btn-group { display: flex; gap: 8px; }
+        .btn {
+            padding: 12px 20px; border: none; border-radius: var(--radius-sm); cursor: pointer;
+            font-size: 1.1rem; font-weight: 700; transition: all var(--transition);
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            user-select: none;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-up { background: var(--team1-color); color: white; min-width: 56px; }
+        .btn-up:hover { background: var(--team1-dark); box-shadow: 0 4px 14px rgba(0,66,37,0.4); }
+        .btn-down { background: #b33939; color: white; min-width: 56px; }
+        .btn-down:hover { background: #962f2f; box-shadow: 0 4px 14px rgba(179,57,57,0.4); }
+        .btn-sm { padding: 8px 14px; font-size: 0.9rem; min-width: 40px; border-radius: 6px; }
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-dark); }
+        .btn-outline:hover { border-color: var(--text-muted); background: var(--bg-light); }
+        .btn-danger { background: #f9f0f0; color: #b33939; border: 2px solid #d9a7a7; }
+        .btn-danger:hover { background: #b33939; color: white; border-color: #b33939; }
+        .games-row { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
+        .games-row .games-value {
+            font-size: 1.5rem; font-weight: 800; color: var(--text-dark); min-width: 30px;
+            text-align: center; font-family: var(--font-mono);
+        }
+
+        .admin-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+
+        /* Viewer Panel */
+        .viewer-container { max-width: 900px; margin: 0 auto; }
+        .scoreboard {
+            background: var(--bg-dark);
+            border-radius: var(--radius-lg);
+            padding: 40px 32px;
+            box-shadow: var(--shadow-lg);
+            color: var(--text-light);
+            position: relative;
+            overflow: hidden;
+            border: 4px solid var(--team1-dark);
+        }
+        .scoreboard::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.03), transparent 60%);
+            pointer-events: none;
+        }
+        .scoreboard-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;
+            font-size: 0.9rem; color: #a3b8aa; letter-spacing: 1px; text-transform: uppercase;
+            position: relative; z-index: 1; flex-wrap: wrap; gap: 8px;
+        }
+        .scoreboard-header .match-type {
+            background: rgba(255,255,255,0.08); padding: 6px 16px; border-radius: 50px;
+            font-weight: 600; color: var(--gold); border: 1px solid rgba(201,168,108,0.3);
+        }
+        .scoreboard-title {
+            text-align: center; font-size: 1.6rem; font-weight: 700; color: var(--gold);
+            margin-bottom: 10px; position: relative; z-index: 1; letter-spacing: 1px;
+        }
+        .scoreboard-subtitle {
+            text-align: center; font-size: 0.95rem; color: #a3b8aa; margin-bottom: 20px;
+            position: relative; z-index: 1;
+        }
+        .hidden { display: none !important; }
+        .sb-grid {
+            display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center;
+            position: relative; z-index: 1;
+        }
+        .sb-player { text-align: center; padding: 16px; border-radius: var(--radius); }
+        .sb-player.team1-side { background: rgba(0,66,37,0.3); border: 2px solid var(--team1-color); }
+        .sb-player.team2-side { background: rgba(90,45,130,0.3); border: 2px solid var(--team2-color); }
+        .player-name {
+            font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px;
+            color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+        }
+        .player-name-sm { font-size: 1.15rem; font-weight: 400; opacity: 0.8; color: #d0d0d0; margin-bottom: 2px; }
+        .serving-badge {
+            font-size: 0.7rem; background: var(--gold); color: #000; padding: 2px 8px; border-radius: 50px;
+            font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .sb-points {
+            font-size: 4.5rem; font-weight: 900; font-family: var(--font-mono); letter-spacing: -2px;
+            line-height: 1; margin: 8px 0; transition: all 0.3s ease; color: #fff;
+        }
+        .sb-points.deuce { color: var(--gold); font-size: 3.2rem; letter-spacing: 0; }
+        .sb-points.ad { color: var(--gold); font-size: 3.8rem; }
+        .sb-points.love { color: #8fa89a; }
+        .sb-vs { font-size: 2rem; font-weight: 900; color: #6b8a78; text-align: center; }
+        .sb-stats {
+            display: flex; justify-content: center; gap: 32px; margin-top: 24px; padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1); position: relative; z-index: 1;
+        }
+        .sb-stat { text-align: center; }
+        .sb-stat .stat-label {
+            font-size: 0.75rem; text-transform: uppercase; color: #8fa89a; letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .sb-stat .stat-value { font-size: 1.8rem; font-weight: 800; font-family: var(--font-mono); }
+        .sb-stat.team1-stat .stat-value { color: #7bb59b; }
+        .sb-stat.team2-stat .stat-value { color: #c9a0d4; }
+        .sb-footer {
+            text-align: center; margin-top: 24px; font-size: 0.8rem; color: #6b8a78;
+            position: relative; z-index: 1; letter-spacing: 0.5px;
+        }
+        .scoreboard-credit {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: #4a5f52;
+            position: relative;
+            z-index: 1;
+            letter-spacing: 0.5px;
+            font-style: italic;
+        }
+        .score-change-flash { animation: flashScore 0.5s ease; }
+        @keyframes flashScore {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        @media (max-width: 700px) {
+            .scoreboard { padding: 24px 16px; }
+            .sb-points { font-size: 3rem; }
+            .sb-points.deuce { font-size: 2.2rem; }
+            .sb-points.ad { font-size: 2.6rem; }
+            .player-name { font-size: 1.1rem; }
+            .player-name-sm { font-size: 0.95rem; }
+            .sb-vs { font-size: 1.4rem; }
+            .sb-stats { gap: 16px; flex-wrap: wrap; }
+            .sb-stat .stat-value { font-size: 1.4rem; }
+        }
+        @media (max-width: 600px) {
+            .main-content { padding: 12px; }
+            .admin-card { padding: 16px; }
+            .score-display-mini { font-size: 2rem; min-width: 50px; }
+            .btn { padding: 10px 16px; font-size: 1rem; }
+            .app-header { padding: 12px 16px; }
+            .view-btn { padding: 8px 16px; font-size: 0.85rem; }
+            .mode-btn { padding: 8px 16px; font-size: 0.9rem; }
+            .title-input-section input { min-width: 150px; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c0b9a8; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="app-logo">
+            <span>🎾</span> Tennis Scoreboard
+        </div>
+        <div class="view-toggle">
+            <button class="view-btn active" data-view="admin" id="btnViewAdmin">⚙️ Admin</button>
+            <button class="view-btn" data-view="viewer" id="btnViewViewer">📺 Viewer</button>
+        </div>
+        <div class="sync-indicator">
+            <span class="sync-dot"></span>
+            <span id="syncText">Live Sync</span>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+
+        <!-- ADMIN PANEL -->
+        <div class="view-panel active" id="panelAdmin">
+            <div class="admin-header-section">
+                <h1>Match Control Panel</h1>
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="singles" id="btnModeSingles">👤 Singles</button>
+                    <button class="mode-btn" data-mode="doubles" id="btnModeDoubles">👥 Doubles</button>
+                </div>
+                <!-- Title & Subtitle Inputs -->
+                <div class="title-input-section">
+                    <label for="inputMatchTitle">Title:</label>
+                    <input type="text" id="inputMatchTitle" placeholder="Enter scoreboard title..." maxlength="80">
+                    <label for="inputMatchSubtitle" style="margin-left:20px;">Subtitle:</label>
+                    <input type="text" id="inputMatchSubtitle" placeholder="Enter subtitle..." maxlength="80">
+                </div>
+                <!-- Server Toggle -->
+                <div class="server-toggle-section">
+                    <label>Server:</label>
+                    <button class="server-btn active team1" id="btnServerTeam1">Team 1</button>
+                    <button class="server-btn team2" id="btnServerTeam2">Team 2</button>
+                </div>
+            </div>
+
+            <div class="admin-grid">
+                <!-- Team 1 Card -->
+                <div class="admin-card team1">
+                    <h2>🟢 Team 1</h2>
+                    <div class="name-fields">
+                        <div class="name-field">
+                            <label id="label1p1">Player Name</label>
+                            <input type="text" id="input1p1" placeholder="Enter player name..." maxlength="40">
+                        </div>
+                        <div class="name-field" id="field1p2" style="display:none;">
+                            <label>Partner Name</label>
+                            <input type="text" id="input1p2" placeholder="Enter partner name..." maxlength="40">
+                        </div>
+                    </div>
+                    <div class="score-controls">
+                        <div class="score-display-mini" id="miniScore1">Love</div>
+                        <div class="btn-group">
+                            <button class="btn btn-up" id="btnUp1" title="Increase score">▲</button>
+                            <button class="btn btn-down" id="btnDown1" title="Decrease score">▼</button>
+                        </div>
+                    </div>
+                    <div class="games-row">
+                        <span>Games:</span>
+                        <button class="btn btn-sm btn-outline" id="btnGamesDown1">−</button>
+                        <span class="games-value" id="games1">0</span>
+                        <button class="btn btn-sm btn-outline" id="btnGamesUp1">+</button>
+                    </div>
+                </div>
+
+                <!-- Team 2 Card -->
+                <div class="admin-card team2">
+                    <h2>🟣 Team 2</h2>
+                    <div class="name-fields">
+                        <div class="name-field">
+                            <label id="label2p1">Player Name</label>
+                            <input type="text" id="input2p1" placeholder="Enter player name..." maxlength="40">
+                        </div>
+                        <div class="name-field" id="field2p2" style="display:none;">
+                            <label>Partner Name</label>
+                            <input type="text" id="input2p2" placeholder="Enter partner name..." maxlength="40">
+                        </div>
+                    </div>
+                    <div class="score-controls">
+                        <div class="score-display-mini" id="miniScore2">Love</div>
+                        <div class="btn-group">
+                            <button class="btn btn-up" id="btnUp2" title="Increase score">▲</button>
+                            <button class="btn btn-down" id="btnDown2" title="Decrease score">▼</button>
+                        </div>
+                    </div>
+                    <div class="games-row">
+                        <span>Games:</span>
+                        <button class="btn btn-sm btn-outline" id="btnGamesDown2">−</button>
+                        <span class="games-value" id="games2">0</span>
+                        <button class="btn btn-sm btn-outline" id="btnGamesUp2">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Actions -->
+            <div class="admin-actions">
+                <button class="btn btn-outline" id="btnResetPoints">🔄 Reset Points</button>
+                <button class="btn btn-outline" id="btnResetGames">🔄 Reset Games</button>
+                <button class="btn btn-danger" id="btnFullReset">⚠️ Full Reset</button>
+            </div>
+            <p style="margin-top: 12px; font-size: 0.8rem; color: var(--text-muted);">
+                💡 Open this page in two tabs — set one as <strong>Admin</strong> and the other as <strong>Viewer</strong> to see live sync.
+            </p>
+        </div>
+
+        <!-- VIEWER PANEL -->
+        <div class="view-panel" id="panelViewer">
+            <div class="viewer-container">
+                <div class="scoreboard" id="scoreboard">
+                    <div class="scoreboard-header">
+                        <span>🎾 Match Score</span>
+                        <span class="match-type" id="sbMatchType">Singles</span>
+                    </div>
+                    <div class="scoreboard-title hidden" id="sbTitle"></div>
+                    <div class="scoreboard-subtitle hidden" id="sbSubtitle"></div>
+                    <div class="sb-grid">
+                        <div class="sb-player team1-side">
+                            <div class="player-name">
+                                <span id="sbName1">Player 1</span>
+                                <span class="serving-badge hidden" id="sbServing1">SERVING</span>
+                            </div>
+                            <div class="player-name-sm" id="sbName1b"></div>
+                            <div class="sb-points" id="sbPoints1">Love</div>
+                        </div>
+                        <div class="sb-vs">VS</div>
+                        <div class="sb-player team2-side">
+                            <div class="player-name">
+                                <span id="sbName2">Player 2</span>
+                                <span class="serving-badge hidden" id="sbServing2">SERVING</span>
+                            </div>
+                            <div class="player-name-sm" id="sbName2b"></div>
+                            <div class="sb-points" id="sbPoints2">Love</div>
+                        </div>
+                    </div>
+                    <div class="sb-stats">
+                        <div class="sb-stat team1-stat">
+                            <div class="stat-label">Games</div>
+                            <div class="stat-value" id="sbGames1">0</div>
+                        </div>
+                        <div class="sb-stat">
+                            <div class="stat-label">Sets</div>
+                            <div class="stat-value" id="sbSetsDisplay">0 - 0</div>
+                        </div>
+                        <div class="sb-stat team2-stat">
+                            <div class="stat-label">Games</div>
+                            <div class="stat-value" id="sbGames2">0</div>
+                        </div>
+                    </div>
+                    <div class="sb-footer" id="sbFooter">
+                        Live tennis scoreboard • Sync enabled
+                    </div>
+                    <!-- Permanent credit line -->
+                    <div class="scoreboard-credit">
+                        Made by RUBIX STUDIOS • abrahamsosu16@gmail.com
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        (function() {
+            const STORAGE_KEY = 'tennisScoreboardState_final';
+            const CHANNEL_NAME = 'tennis-scoreboard-sync-final';
+            const POINT_LABELS = ['Love', '15', '30', '40'];
+
+            function getDefaultState() {
+                return {
+                    mode: 'singles',
+                    team1: { player1: '', player2: '' },
+                    team2: { player1: '', player2: '' },
+                    points: { team1: 0, team2: 0 },
+                    games: { team1: 0, team2: 0 },
+                    sets: { team1: 0, team2: 0 },
+                    server: 'team1',
+                    title: '',
+                    subtitle: ''
+                };
+            }
+
+            let state = loadState();
+            let channel = null;
+            let isBroadcasting = false;
+            let flashTimeout = null;
+
+            function loadState() {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        const defaults = getDefaultState();
+                        return {
+                            ...defaults,
+                            ...parsed,
+                            team1: { ...defaults.team1, ...(parsed.team1 || {}) },
+                            team2: { ...defaults.team2, ...(parsed.team2 || {}) },
+                            points: { ...defaults.points, ...(parsed.points || {}) },
+                            games: { ...defaults.games, ...(parsed.games || {}) },
+                            sets: { ...defaults.sets, ...(parsed.sets || {}) },
+                        };
+                    }
+                } catch (e) { console.warn('Failed to load state:', e); }
+                return getDefaultState();
+            }
+
+            function saveState() {
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+            }
+
+            function broadcastState() {
+                if (channel && !isBroadcasting) {
+                    try { channel.postMessage({ type: 'state-update', state: JSON.parse(JSON.stringify(state)) }); } catch (e) {}
+                }
+            }
+
+            function syncState(newState) {
+                state = newState;
+                saveState();
+                render();
+            }
+
+            function localUpdate() {
+                saveState();
+                broadcastState();
+                render();
+            }
+
+            // Scoring logic
+            function getPointDisplay(points, opponentPoints) {
+                if (points >= 4 && points >= opponentPoints + 2) return 'game';
+                if (opponentPoints >= 4 && opponentPoints >= points + 2) return 'opponent_game';
+                if (points >= 3 && opponentPoints >= 3 && points === opponentPoints) return 'deuce';
+                if (points >= 4 && points === opponentPoints + 1) return 'ad';
+                if (opponentPoints >= 4 && opponentPoints === points + 1) return 'opponent_ad';
+                if (points <= 3) return POINT_LABELS[points] || '40';
+                return '40';
+            }
+
+            function getDisplayInfo(team) {
+                const myPoints = state.points[team];
+                const oppPoints = state.points[team === 'team1' ? 'team2' : 'team1'];
+                const display = getPointDisplay(myPoints, oppPoints);
+                return {
+                    text: display === 'game' ? 'Game!' :
+                          display === 'opponent_game' ? '—' :
+                          display === 'deuce' ? 'Deuce' :
+                          display === 'ad' ? 'AD' :
+                          display === 'opponent_ad' ? '40' : display,
+                    className: display === 'deuce' ? 'deuce' :
+                              display === 'ad' ? 'ad' :
+                              display === 'game' ? 'ad' :
+                              display === 'opponent_game' ? 'love' :
+                              display === 'Love' ? 'love' : '',
+                };
+            }
+
+            function checkGameWin() {
+                const p1 = state.points.team1;
+                const p2 = state.points.team2;
+                if (p1 >= 4 && p1 >= p2 + 2) {
+                    state.games.team1 += 1;
+                    state.points.team1 = 0;
+                    state.points.team2 = 0;
+                    checkSetWin();
+                    return true;
+                }
+                if (p2 >= 4 && p2 >= p1 + 2) {
+                    state.games.team2 += 1;
+                    state.points.team1 = 0;
+                    state.points.team2 = 0;
+                    checkSetWin();
+                    return true;
+                }
+                return false;
+            }
+
+            function checkSetWin() {
+                const g1 = state.games.team1;
+                const g2 = state.games.team2;
+                if (g1 >= 6 && g1 >= g2 + 2) {
+                    state.sets.team1 += 1;
+                    state.games.team1 = 0;
+                    state.games.team2 = 0;
+                } else if (g2 >= 6 && g2 >= g1 + 2) {
+                    state.sets.team2 += 1;
+                    state.games.team1 = 0;
+                    state.games.team2 = 0;
+                }
+            }
+
+            // Actions
+            function incrementPoint(team) {
+                state.points[team] += 1;
+                const gameWon = checkGameWin();
+                localUpdate();
+                if (gameWon) flashScoreboard();
+            }
+
+            function decrementPoint(team) {
+                if (state.points[team] > 0) {
+                    state.points[team] -= 1;
+                    localUpdate();
+                }
+            }
+
+            function incrementGame(team) {
+                state.games[team] += 1;
+                checkSetWin();
+                localUpdate();
+                flashScoreboard();
+            }
+
+            function decrementGame(team) {
+                if (state.games[team] > 0) {
+                    state.games[team] -= 1;
+                    localUpdate();
+                }
+            }
+
+            function resetPoints() { state.points.team1 = 0; state.points.team2 = 0; localUpdate(); }
+            function resetGames() { state.games.team1 = 0; state.games.team2 = 0; state.points.team1 = 0; state.points.team2 = 0; localUpdate(); }
+            function fullReset() {
+                const oldNames = { team1: { ...state.team1 }, team2: { ...state.team2 } };
+                state = getDefaultState();
+                state.team1 = oldNames.team1;
+                state.team2 = oldNames.team2;
+                localUpdate();
+            }
+
+            function setMode(mode) { if (state.mode !== mode) { state.mode = mode; localUpdate(); } }
+            function setPlayerName(team, player, name) { state[team][player] = name; localUpdate(); }
+            function setServer(team) { state.server = team; localUpdate(); }
+            function setTitle(title) { state.title = title; localUpdate(); }
+            function setSubtitle(subtitle) { state.subtitle = subtitle; localUpdate(); }
+
+            function flashScoreboard() {
+                const sb = document.getElementById('scoreboard');
+                if (sb) {
+                    sb.classList.remove('score-change-flash');
+                    void sb.offsetWidth;
+                    sb.classList.add('score-change-flash');
+                    if (flashTimeout) clearTimeout(flashTimeout);
+                    flashTimeout = setTimeout(() => sb.classList.remove('score-change-flash'), 600);
+                }
+            }
+
+            // Rendering
+            function render() {
+                renderAdmin();
+                renderViewer();
+            }
+
+            function renderAdmin() {
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === state.mode);
+                });
+
+                document.getElementById('input1p1').value = state.team1.player1;
+                document.getElementById('input1p2').value = state.team1.player2;
+                document.getElementById('input2p1').value = state.team2.player1;
+                document.getElementById('input2p2').value = state.team2.player2;
+
+                const isDoubles = state.mode === 'doubles';
+                document.getElementById('field1p2').style.display = isDoubles ? 'block' : 'none';
+                document.getElementById('field2p2').style.display = isDoubles ? 'block' : 'none';
+                document.getElementById('label1p1').textContent = isDoubles ? 'Player 1 Name' : 'Player Name';
+                document.getElementById('label2p1').textContent = isDoubles ? 'Player 1 Name' : 'Player Name';
+
+                const info1 = getDisplayInfo('team1');
+                const info2 = getDisplayInfo('team2');
+                document.getElementById('miniScore1').textContent = info1.text;
+                document.getElementById('miniScore2').textContent = info2.text;
+                document.getElementById('games1').textContent = state.games.team1;
+                document.getElementById('games2').textContent = state.games.team2;
+
+                document.getElementById('inputMatchTitle').value = state.title;
+                document.getElementById('inputMatchSubtitle').value = state.subtitle;
+                document.getElementById('btnServerTeam1').classList.toggle('active', state.server === 'team1');
+                document.getElementById('btnServerTeam2').classList.toggle('active', state.server === 'team2');
+            }
+
+            function renderViewer() {
+                const isDoubles = state.mode === 'doubles';
+                document.getElementById('sbMatchType').textContent = isDoubles ? 'Doubles' : 'Singles';
+
+                // Title & subtitle
+                const titleEl = document.getElementById('sbTitle');
+                const subtitleEl = document.getElementById('sbSubtitle');
+                if (state.title.trim()) {
+                    titleEl.textContent = state.title;
+                    titleEl.classList.remove('hidden');
+                } else {
+                    titleEl.classList.add('hidden');
+                }
+                if (state.subtitle.trim()) {
+                    subtitleEl.textContent = state.subtitle;
+                    subtitleEl.classList.remove('hidden');
+                } else {
+                    subtitleEl.classList.add('hidden');
+                }
+
+                // Names
+                const name1 = state.team1.player1.trim() || 'Player 1';
+                const name1b = state.team1.player2.trim();
+                document.getElementById('sbName1').textContent = name1;
+                document.getElementById('sbName1b').textContent = isDoubles && name1b ? name1b : '';
+                document.getElementById('sbName1b').style.display = (isDoubles && name1b) ? 'block' : 'none';
+
+                const name2 = state.team2.player1.trim() || 'Player 2';
+                const name2b = state.team2.player2.trim();
+                document.getElementById('sbName2').textContent = name2;
+                document.getElementById('sbName2b').textContent = isDoubles && name2b ? name2b : '';
+                document.getElementById('sbName2b').style.display = (isDoubles && name2b) ? 'block' : 'none';
+
+                // Serving badges
+                document.getElementById('sbServing1').classList.toggle('hidden', state.server !== 'team1');
+                document.getElementById('sbServing2').classList.toggle('hidden', state.server !== 'team2');
+
+                // Points
+                const info1 = getDisplayInfo('team1');
+                const info2 = getDisplayInfo('team2');
+                const pts1El = document.getElementById('sbPoints1');
+                const pts2El = document.getElementById('sbPoints2');
+                pts1El.textContent = info1.text;
+                pts2El.textContent = info2.text;
+                pts1El.className = 'sb-points ' + info1.className;
+                pts2El.className = 'sb-points ' + info2.className;
+
+                // Games & Sets
+                document.getElementById('sbGames1').textContent = state.games.team1;
+                document.getElementById('sbGames2').textContent = state.games.team2;
+                document.getElementById('sbSetsDisplay').textContent = `${state.sets.team1} - ${state.sets.team2}`;
+                document.getElementById('sbFooter').textContent = 'Live tennis scoreboard • Sync enabled • ' + new Date().toLocaleTimeString();
+            }
+
+            // Event listeners
+            function setupEventListeners() {
+                document.getElementById('btnViewAdmin').addEventListener('click', () => switchView('admin'));
+                document.getElementById('btnViewViewer').addEventListener('click', () => switchView('viewer'));
+
+                document.getElementById('btnModeSingles').addEventListener('click', () => setMode('singles'));
+                document.getElementById('btnModeDoubles').addEventListener('click', () => setMode('doubles'));
+
+                document.getElementById('btnServerTeam1').addEventListener('click', () => setServer('team1'));
+                document.getElementById('btnServerTeam2').addEventListener('click', () => setServer('team2'));
+
+                document.getElementById('inputMatchTitle').addEventListener('input', (e) => setTitle(e.target.value));
+                document.getElementById('inputMatchSubtitle').addEventListener('input', (e) => setSubtitle(e.target.value));
+
+                document.getElementById('btnUp1').addEventListener('click', () => incrementPoint('team1'));
+                document.getElementById('btnDown1').addEventListener('click', () => decrementPoint('team1'));
+                document.getElementById('btnUp2').addEventListener('click', () => incrementPoint('team2'));
+                document.getElementById('btnDown2').addEventListener('click', () => decrementPoint('team2'));
+
+                document.getElementById('btnGamesUp1').addEventListener('click', () => incrementGame('team1'));
+                document.getElementById('btnGamesDown1').addEventListener('click', () => decrementGame('team1'));
+                document.getElementById('btnGamesUp2').addEventListener('click', () => incrementGame('team2'));
+                document.getElementById('btnGamesDown2').addEventListener('click', () => decrementGame('team2'));
+
+                document.getElementById('btnResetPoints').addEventListener('click', resetPoints);
+                document.getElementById('btnResetGames').addEventListener('click', resetGames);
+                document.getElementById('btnFullReset').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to fully reset the match? Player names will be kept.')) {
+                        fullReset();
+                    }
+                });
+
+                document.getElementById('input1p1').addEventListener('input', (e) => setPlayerName('team1', 'player1', e.target.value));
+                document.getElementById('input1p2').addEventListener('input', (e) => setPlayerName('team1', 'player2', e.target.value));
+                document.getElementById('input2p1').addEventListener('input', (e) => setPlayerName('team2', 'player1', e.target.value));
+                document.getElementById('input2p2').addEventListener('input', (e) => setPlayerName('team2', 'player2', e.target.value));
+            }
+
+            function switchView(view) {
+                document.querySelectorAll('.view-panel').forEach(panel => {
+                    panel.classList.toggle('active', panel.id === `panel${view.charAt(0).toUpperCase()}${view.slice(1)}`);
+                });
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.view === view);
+                });
+            }
+
+            // Sync setup
+            function setupSync() {
+                try {
+                    channel = new BroadcastChannel(CHANNEL_NAME);
+                    channel.onmessage = (event) => {
+                        const data = event.data;
+                        if (data && data.type === 'state-update' && data.state) {
+                            isBroadcasting = true;
+                            syncState(data.state);
+                            isBroadcasting = false;
+                            document.getElementById('syncText').textContent = 'Synced ✓';
+                            setTimeout(() => document.getElementById('syncText').textContent = 'Live Sync', 1500);
+                        }
+                    };
+                } catch (e) {
+                    window.addEventListener('storage', (e) => {
+                        if (e.key === STORAGE_KEY && e.newValue) {
+                            try {
+                                const parsed = JSON.parse(e.newValue);
+                                const defaults = getDefaultState();
+                                state = {
+                                    ...defaults,
+                                    ...parsed,
+                                    team1: { ...defaults.team1, ...(parsed.team1 || {}) },
+                                    team2: { ...defaults.team2, ...(parsed.team2 || {}) },
+                                    points: { ...defaults.points, ...(parsed.points || {}) },
+                                    games: { ...defaults.games, ...(parsed.games || {}) },
+                                    sets: { ...defaults.sets, ...(parsed.sets || {}) },
+                                };
+                                render();
+                            } catch (err) { console.warn('Failed to parse storage event:', err); }
+                        }
+                    });
+                }
+            }
+
+            function init() {
+                setupEventListeners();
+                setupSync();
+                render();
+                console.log('🎾 Customizable Tennis Scoreboard initialized');
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
