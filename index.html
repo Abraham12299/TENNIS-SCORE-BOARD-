@@ -41,6 +41,8 @@
             overscroll-behavior: none;
         }
 
+        .hidden { display: none !important; }
+
         /* Landing Page */
         .landing-container {
             max-width: 600px;
@@ -145,7 +147,6 @@
             color: #b33939;
             font-size: 0.85rem;
             margin-top: 10px;
-            display: none;
         }
         .join-screen .btn-back {
             background: transparent;
@@ -375,7 +376,6 @@
         .scoreboard-header .match-type { background: rgba(255,255,255,0.08); padding: 6px 16px; border-radius: 50px; font-weight: 600; color: var(--gold); border: 1px solid rgba(201,168,108,0.3); }
         .scoreboard-title { text-align: center; font-size: 1.6rem; font-weight: 700; color: var(--gold); margin-bottom: 10px; position: relative; z-index: 1; letter-spacing: 1px; }
         .scoreboard-subtitle { text-align: center; font-size: 0.95rem; color: #a3b8aa; margin-bottom: 20px; position: relative; z-index: 1; }
-        .hidden { display: none !important; }
         .sb-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; position: relative; z-index: 1; }
         .sb-player { text-align: center; padding: 16px; border-radius: var(--radius); }
         .sb-player.team1-side { background: rgba(0,66,37,0.3); border: 2px solid var(--team1-color); }
@@ -458,7 +458,7 @@
         <p style="color:var(--text-muted); margin-bottom:16px;">Enter the 6-digit room code from the admin's screen.</p>
         <input type="text" id="joinCodeInput" placeholder="______" maxlength="6" autocomplete="off">
         <button class="join-btn" id="btnSubmitJoin">Join Room</button>
-        <p class="join-error" id="joinError">Invalid room code. Please enter 6 characters.</p>
+        <p class="join-error hidden" id="joinError">Invalid room code. Please enter 6 characters.</p>
         <button class="btn-back" id="btnBackToLanding">← Back to Home</button>
     </div>
 
@@ -891,7 +891,7 @@
             }
 
             function renderViewerScoreboard() {
-                if (!document.getElementById('viewerScoreboard').classList.contains('hidden')) {
+                if (document.getElementById('panelViewer').classList.contains('active')) {
                     const isDoubles = localState.mode === 'doubles';
                     document.getElementById('sbMatchType').textContent = isDoubles ? 'Doubles' : 'Singles';
                     const titleEl = document.getElementById('sbTitle');
@@ -948,6 +948,7 @@
                 document.getElementById('panelViewer').classList.remove('active');
                 document.getElementById('roomIndicator').classList.remove('hidden');
                 document.getElementById('headerRoomCode').textContent = currentRoomCode || '------';
+                renderAll();
             }
 
             function showViewer() {
@@ -959,6 +960,7 @@
                 document.getElementById('panelViewer').classList.add('active');
                 document.getElementById('roomIndicator').classList.remove('hidden');
                 document.getElementById('headerRoomCode').textContent = currentRoomCode || '------';
+                renderViewerScoreboard();
             }
 
             function leaveRoom() {
@@ -997,11 +999,11 @@
                     if (input.length === 6) {
                         currentRoomCode = input;
                         setupViewerChannel(currentRoomCode);
-                        document.getElementById('joinError').style.display = 'none';
+                        document.getElementById('joinError').classList.add('hidden');
                         currentRole = 'viewer';
                         showViewer();
                     } else {
-                        document.getElementById('joinError').style.display = 'block';
+                        document.getElementById('joinError').classList.remove('hidden');
                     }
                 });
 
@@ -1068,4 +1070,4 @@
         })();
     </script>
 </body>
-</html>
+                            </html>
