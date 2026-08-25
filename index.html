@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tennis Scoreboard • Zoom-Like Match System</title>
+    <title>Tennis Scoreboard • Cross-Device Broadcast</title>
     <style>
         :root {
             --team1-color: #004225;
@@ -227,6 +227,10 @@
             border-radius: 50%;
             background: #22c55e;
             animation: pulse 2s infinite;
+        }
+        .sync-dot.offline {
+            background: #ef4444;
+            animation: none;
         }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
 
@@ -472,8 +476,8 @@
             <button class="btn-leave" id="btnLeaveRoom">Leave</button>
         </div>
         <div class="sync-indicator">
-            <span class="sync-dot"></span>
-            <span id="syncText">Live Sync</span>
+            <span class="sync-dot" id="syncDot"></span>
+            <span id="syncText">Connecting...</span>
         </div>
     </header>
 
@@ -610,16 +614,36 @@
     <script>
         (function() {
             const POINT_LABELS = ['Love', '15', '30', '40'];
-            const CHANNEL_PREFIX = 'tennis-room-';
             const ROOM_HISTORY_KEY = 'tennis_room_history';
-
+            
+            // 🔑 REPLACE THESE WITH YOUR SUPABASE CREDENTIALS
+            const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+            const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+            
+            let supabaseClient = null;
             let currentRole = 'admin';
             let currentRoomCode = null;
-            let channel = null;
-            let isBroadcasting = false;
             let flashTimeout = null;
             let localState = getDefaultState();
             let roomHistory = loadRoomHistory();
+            let realtimeSubscription = null;
+
+            // Initialize Supabase
+            if (SUPABASE_URL.includes('YOUR_PROJECT')) {
+                console.warn('⚠️ Please add your Supabase credentials. Get them free at supabase.com');
+                document.getElementById('syncDot').classList.add('offline');
+                document.getElementById('syncText').textContent = 'Setup Required';
+            } else {
+                // Load Supabase from CDN
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+                script.onload = () => {
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    document.getElementById('syncDot').classList.remove('offline');
+                    document.getElementById('syncText').textContent = 'Connected';
+                };
+                document.head.appendChild(script);
+            }
 
             function getDefaultState() {
                 return {
@@ -656,12 +680,6 @@
                 }
             }
 
-            function removeRoomFromHistory(code) {
-                roomHistory = roomHistory.filter(c => c !== code);
-                saveRoomHistory();
-                renderRoomHistory();
-            }
-
             function renderRoomHistory() {
                 const listEl = document.getElementById('roomHistoryList');
                 if (!listEl) return;
@@ -674,19 +692,15 @@
                         </span>`
                     ).join('');
                     listEl.querySelectorAll('.room-history-item').forEach(item => {
-                        item.addEventListener('click', () => restoreRoom(item.dataset.code));
+                        item.addEventListener('click', () => {
+                            currentRoomCode = item.dataset.code;
+                            document.getElementById('roomCodeDisplay').textContent = currentRoomCode;
+                            document.getElementById('headerRoomCode').textContent = currentRoomCode;
+                            subscribeToRoom(currentRoomCode);
+                            addRoomToHistory(currentRoomCode);
+                        });
                     });
                 }
-            }
-
-            function restoreRoom(code) {
-                currentRoomCode = code;
-                document.getElementById('roomCodeDisplay').textContent = code;
-                document.getElementById('headerRoomCode').textContent = code;
-                setupAdminChannel(code);
-                broadcastState();
-                removeRoomFromHistory(code);
-                addRoomToHistory(code);
             }
 
             function generateRoomCode() {
@@ -702,59 +716,53 @@
                 currentRoomCode = generateRoomCode();
                 document.getElementById('roomCodeDisplay').textContent = currentRoomCode;
                 document.getElementById('headerRoomCode').textContent = currentRoomCode;
-                setupAdminChannel(currentRoomCode);
-                broadcastState();
+                subscribeToRoom(currentRoomCode);
                 addRoomToHistory(currentRoomCode);
+                sendStateUpdate();
             }
 
-            function loadLastRoomCode() {
-                if (roomHistory.length > 0) {
-                    currentRoomCode = roomHistory[0];
-                    document.getElementById('roomCodeDisplay').textContent = currentRoomCode;
-                    document.getElementById('headerRoomCode').textContent = currentRoomCode;
-                    setupAdminChannel(currentRoomCode);
-                } else {
-                    generateNewRoom();
+            function subscribeToRoom(roomCode) {
+                if (realtimeSubscription) {
+                    supabaseClient.removeChannel(realtimeSubscription);
                 }
+                
+                realtimeSubscription = supabaseClient
+                    .channel('room-' + roomCode)
+                    .on('postgres_changes', 
+                        { event: '*', schema: 'public', table: 'scoreboards', filter: `room_code=eq.${roomCode}` },
+                        (payload) => {
+                            if (payload.new && payload.new.state) {
+                                localState = payload.new.state;
+                                renderAll();
+                            }
+                        }
+                    )
+                    .subscribe();
             }
 
-            function setupAdminChannel(roomCode) {
-                if (channel) { try { channel.close(); } catch(e) {} }
-                channel = new BroadcastChannel(CHANNEL_PREFIX + roomCode);
-                channel.onmessage = (event) => {
-                    const data = event.data;
-                    if (data && data.type === 'state-update' && data.state) {
-                        isBroadcasting = true;
-                        localState = data.state;
-                        renderAll();
-                        isBroadcasting = false;
-                        document.getElementById('syncText').textContent = 'Synced ✓';
-                        setTimeout(() => document.getElementById('syncText').textContent = 'Live Sync', 1500);
+            async function sendStateUpdate() {
+                if (!supabaseClient || !currentRoomCode) return;
+                
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('scoreboards')
+                        .upsert({ 
+                            room_code: currentRoomCode,
+                            state: localState,
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'room_code' });
+                    
+                    if (error) {
+                        console.error('Error saving state:', error);
                     }
-                };
-            }
-
-            function setupViewerChannel(roomCode) {
-                if (channel) { try { channel.close(); } catch(e) {} }
-                channel = new BroadcastChannel(CHANNEL_PREFIX + roomCode);
-                channel.onmessage = (event) => {
-                    const data = event.data;
-                    if (data && data.type === 'state-update' && data.state) {
-                        localState = data.state;
-                        renderViewerScoreboard();
-                    }
-                };
-            }
-
-            function broadcastState() {
-                if (channel && !isBroadcasting) {
-                    try { channel.postMessage({ type: 'state-update', state: JSON.parse(JSON.stringify(localState)) }); } catch(e) {}
+                } catch(e) {
+                    console.error('Failed to save state:', e);
                 }
             }
 
             function localUpdate() {
                 renderAll();
-                broadcastState();
+                sendStateUpdate();
             }
 
             function getPointDisplay(points, opponentPoints) {
@@ -964,7 +972,9 @@
             }
 
             function leaveRoom() {
-                if (channel) { try { channel.close(); } catch(e) {} }
+                if (realtimeSubscription) {
+                    supabaseClient.removeChannel(realtimeSubscription);
+                }
                 currentRoomCode = null;
                 currentRole = 'admin';
                 localState = getDefaultState();
@@ -972,10 +982,9 @@
             }
 
             function setupEventListeners() {
-                // Landing page
                 document.getElementById('btnCreateMatch').addEventListener('click', () => {
                     currentRole = 'admin';
-                    if (!currentRoomCode) { generateNewRoom(); } else { setupAdminChannel(currentRoomCode); }
+                    if (!currentRoomCode) { generateNewRoom(); }
                     showAdmin();
                 });
 
@@ -993,14 +1002,13 @@
 
                 document.getElementById('btnLeaveRoom').addEventListener('click', leaveRoom);
 
-                // Join screen
                 document.getElementById('btnSubmitJoin').addEventListener('click', () => {
                     const input = document.getElementById('joinCodeInput').value.trim().toUpperCase();
                     if (input.length === 6) {
                         currentRoomCode = input;
-                        setupViewerChannel(currentRoomCode);
                         document.getElementById('joinError').classList.add('hidden');
                         currentRole = 'viewer';
+                        subscribeToRoom(currentRoomCode);
                         showViewer();
                     } else {
                         document.getElementById('joinError').classList.remove('hidden');
@@ -1013,7 +1021,6 @@
                     }
                 });
 
-                // Admin controls
                 document.getElementById('btnGenerateCode').addEventListener('click', generateNewRoom);
                 document.getElementById('btnCopyCode').addEventListener('click', () => {
                     const code = document.getElementById('roomCodeDisplay').textContent;
@@ -1063,11 +1070,11 @@
             function init() {
                 setupEventListeners();
                 showLanding();
-                console.log('🎾 Zoom-Like Tennis Scoreboard initialized');
+                console.log('🎾 Cross-Device Tennis Scoreboard (Supabase) initialized');
             }
 
             init();
         })();
     </script>
 </body>
-                            </html>
+</html>
